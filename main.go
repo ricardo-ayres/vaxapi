@@ -69,5 +69,7 @@ func main() {
 	http.HandleFunc("/users/", Users)
 
 	// start the server
-	log.Fatal(http.ListenAndServe(":5050", nil))
+	port := ":5050"
+	log.Printf("Running on port %s", port)
+	log.Fatal(http.ListenAndServe(port, nil))
 }
