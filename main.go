@@ -13,57 +13,50 @@ import (
 )
 
 type User struct {
-	Username string `json:"username"`
-	PwdHash  string `json:"pwdHash"`
-	Uid      int    `json:"uid"`
-}
-
-// db stand-in
-var UserMap = map[int]User{
-	0: User{"ric", "asdf", 0},
-	1: User{"john", "qwer", 1},
-	2: User{"doe", "zxcv", 2},
+	Id      int    `json:"id"`
+	Name string `json:"name"`
+	Birth string `json:"birth"`
+	Email string `json:"email"`
 }
 
 func Users(w http.ResponseWriter, r *http.Request) {
 	var err error
+	var user User
+	db := Db
+	queryString := "select * from users"
+	users := make([]User, 0)
+
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "\t")
 
-	users := map[int]User{}
-
 	if _, path, found := strings.Cut(r.URL.Path, "/users/"); found {
-		if path == "" {
-			users = UserMap
+		id, err := strconv.Atoi(path)
+		if err != nil {
+			log.Printf("Can't convert Atoi(\"%s\")\n", path)
 		} else {
-			id, err := strconv.Atoi(path)
-			if err != nil {
-				log.Printf("Can't convert Atoi(\"%s\")\n", path)
-				return
-			}
+			queryString = fmt.Sprintf("%s where id = %d", queryString, id)
+		}
 
-			if user, exists := UserMap[id]; exists {
-				users[id] = user
-			} else {
-				errmsg := fmt.Sprintf("Error: user \"%s\" not found!\n", path)
-				strings.NewReader(errmsg).WriteTo(w)
-				log.Printf(errmsg)
-				return
+		rows, err := db.Query(queryString)
+		if err != nil {
+			log.Printf("Bad query, %s\n", err)
+		}
+
+		for rows.Next() {
+			err := rows.Scan(&user.Id, &user.Name, &user.Birth, &user.Email)
+			if err != nil {
+				log.Printf("Bad scan, %s\n", err)
 			}
+			users = append(users, user)
 		}
 	}
-
-	result := make([]User, 0, len(users))
-	for _, u := range users {
-		result = append(result, u)
-	}
-
-	err = enc.Encode(result)
+	err = enc.Encode(users)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Bad encode, %s\n", err)
 	}
 }
 
+var Db *sql.DB
 func main() {
 	// setup database
 	createTables := false
@@ -77,6 +70,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	Db = db
 
 	if createTables {
 		createUsers := `
@@ -92,7 +87,6 @@ func main() {
 		}
 		log.Println(res)
 	}
-	
 
 	// static pages
 	http.Handle("/", http.FileServer(http.Dir("./static")))
