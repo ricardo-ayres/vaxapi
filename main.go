@@ -1,13 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	_ "github.com/glebarez/go-sqlite"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	//"github.com/jinzhu/gorm"
 )
 
 type User struct {
@@ -63,6 +65,34 @@ func Users(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// setup database
+	createTables := false
+	if _, err := os.Stat("./sqlite.db"); err != nil {
+		createTables = true
+		log.Println("Database does not exist. Will create")
+	}
+
+	db, err := sql.Open("sqlite", "sqlite.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if createTables {
+		createUsers := `
+			create table users (
+			id integer primary key,
+			name text,
+			birth text,
+			email text unique
+			);`
+		res, err := db.Exec(createUsers)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(res)
+	}
+	
 
 	// static pages
 	http.Handle("/", http.FileServer(http.Dir("./static")))
