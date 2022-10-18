@@ -3,94 +3,108 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	_ "github.com/glebarez/go-sqlite"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 )
 
-type User struct {
-	Id      int    `json:"id"`
-	Name string `json:"name"`
-	Birth string `json:"birth"`
-	Email string `json:"email"`
+func internalServerError(w http.ResponseWriter) {
+	s := "Oops, we're having trouble!"
+	e := http.StatusInternalServerError
+	http.Error(w, s, e)
 }
 
-func Users(w http.ResponseWriter, r *http.Request) {
-	var err error
-	var user User
-	db := Db
-	queryString := "select * from users"
-	users := make([]User, 0)
+func badRequest(w http.ResponseWriter) {
+	s := "Bad request!"
+	e := http.StatusBadRequest
+	http.Error(w, s, e)
+}
 
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "\t")
+func notFound(w http.ResponseWriter) {
+	s := "Oops, resource not found!"
+	e := http.StatusInternalServerError
+	http.Error(w, s, e)
+}
 
-	if _, path, found := strings.Cut(r.URL.Path, "/users/"); found {
-		id, err := strconv.Atoi(path)
-		if err != nil {
-			log.Printf("Can't convert Atoi(\"%s\")\n", path)
-		} else {
-			queryString = fmt.Sprintf("%s where id = %d", queryString, id)
+func Users(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		var user User
+		var user_id int64
+
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "\t")
+
+		dec := json.NewDecoder(r.Body)
+
+		_, path, pathfound := strings.Cut(r.URL.Path, "/users/")
+		if !pathfound {
+			http.Error(w, "Path not specified!", http.StatusBadRequest)
+			return
 		}
+		user_id, err = strconv.ParseInt(path, 10, 64)
 
-		rows, err := db.Query(queryString)
-		if err != nil {
-			log.Printf("Bad query, %s\n", err)
-		}
-
-		for rows.Next() {
-			err := rows.Scan(&user.Id, &user.Name, &user.Birth, &user.Email)
+		switch r.Method {
+		case "GET":
 			if err != nil {
-				log.Printf("Bad scan, %s\n", err)
+				internalServerError(w)
+				return
 			}
-			users = append(users, user)
+
+			user, err := GetUserById(db, user_id)
+			if err == sql.ErrNoRows {
+				notFound(w)
+				return
+			} else if err != nil {
+				internalServerError(w)
+				log.Printf("Bad query: %s\n", err)
+				return
+			}
+
+			err = enc.Encode(user)
+			if err != nil {
+				internalServerError(w)
+				log.Printf("Bad encode, %s\n", err)
+			}
+
+		case "POST":
+			if path != "" {
+				badRequest(w)
+				return
+			}
+
+			err = dec.Decode(&user)
+			if err != nil {
+				internalServerError(w)
+				return
+			}
+
+			newuser, err := CreateNewUser(db, user)
+			if err != nil {
+				internalServerError(w)
+				return
+			}
+			enc.Encode(newuser)
+
+		case "PUT":
+		case "DELETE":
+
+		default:
+			internalServerError(w)
 		}
-	}
-	err = enc.Encode(users)
-	if err != nil {
-		log.Printf("Bad encode, %s\n", err)
 	}
 }
 
-var Db *sql.DB
 func main() {
 	// setup database
-	createTables := false
-	if _, err := os.Stat("./sqlite.db"); err != nil {
-		createTables = true
-		log.Println("Database does not exist. Will create")
-	}
-
-	db, err := sql.Open("sqlite", "sqlite.db")
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := SetupDatabase("./sqlite.db")
 	defer db.Close()
-
-	Db = db
-
-	if createTables {
-		createUsers := `
-			create table users (
-			id integer primary key,
-			name text,
-			birth text,
-			email text unique
-			);`
-		res, err := db.Exec(createUsers)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println(res)
-	}
 
 	// static pages
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/users/", Users)
+	http.HandleFunc("/users/", Users(db))
 
 	// start the server
 	port := ":5050"
