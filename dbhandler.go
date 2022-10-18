@@ -7,20 +7,20 @@ import (
 )
 
 type User struct {
-	Id    int64  `json:"id"`
+	Id    int64  `json:"user_id"`
 	Name  string `json:"name"`
 	Birth string `json:"birth"`
 	Email string `json:"email"`
 }
 
 type Vaccin struct {
-	Id       int64  `json: "id"`
+	Id       int64  `json: "vac_id"`
 	Name     string `json: "name"`
 	NumDoses string `json: "num_doses"`
 }
 
 type Dose struct {
-	Id        int64  `json: "id"`
+	Id        int64  `json: "dose_id"`
 	UserId    int64  `json: "user_id"`
 	VacId     int64  `json: "vac_id"`
 	DateTaken string `json: "date_taken"`
@@ -47,12 +47,11 @@ func SetupDatabase(filename string) *sql.DB {
 }
 
 func createTables(db *sql.DB) {
-	var res sql.Result
 	var err error
 
 	createUsers := `
 		create table users (
-		id integer primary key,
+		user_id integer primary key,
 		name text,
 		birth text,
 		email text unique
@@ -60,41 +59,40 @@ func createTables(db *sql.DB) {
 
 	createVaccines := `
 		create table vaccines (
-		id integer primary key,
+		vac_id integer primary key,
 		name text,
 		num_doses integer
 		);`
 
 	createDoses := `
 		create table doses (
-		id integer primary key,
-		user_id integer foreign key,
-		vac_id integer foreign key,
-		date_taken text
+		dose_id integer primary key,
+		user_id integer,
+		vac_id integer,
+		date_taken text,
+		foreign key(user_id) references users(user_id),
+		foreign key(vac_id) references vaccines(vac_id)
 		);`
 
-	res, err = db.Exec(createUsers)
+	_, err = db.Exec(createUsers)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(res)
 
-	res, err = db.Exec(createVaccines)
+	_, err = db.Exec(createVaccines)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(res)
 
-	res, err = db.Exec(createDoses)
+	_, err = db.Exec(createDoses)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(res)
 }
 
 func GetUserById(db *sql.DB, user_id int64) (User, error) {
 	var user User
-	queryString := "select id, name, birth, email from users where id = ?;"
+	queryString := "select user_id, name, birth, email from users where id = ?;"
 	row := db.QueryRow(queryString, user_id)
 	err := row.Scan(&user.Id, &user.Name, &user.Birth, &user.Email)
 	return user, err
