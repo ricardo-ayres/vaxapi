@@ -112,7 +112,7 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
-	port = ":"+port
+	port = ":" + port
 
 	// start the server
 	log.Printf("Running on port %s", port)

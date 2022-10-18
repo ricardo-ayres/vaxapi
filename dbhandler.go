@@ -7,20 +7,20 @@ import (
 )
 
 type User struct {
-	Id    int64  `json:"user_id"`
-	Name  string `json:"name"`
-	Birth string `json:"birth"`
-	Email string `json:"email"`
+	UserId int64  `json:"user_id"`
+	Name   string `json:"name"`
+	Birth  string `json:"birth"`
+	Email  string `json:"email"`
 }
 
 type Vaccin struct {
-	Id       int64  `json: "vac_id"`
+	VacId    int64  `json: "vac_id"`
 	Name     string `json: "name"`
 	NumDoses string `json: "num_doses"`
 }
 
 type Dose struct {
-	Id        int64  `json: "dose_id"`
+	DoseId    int64  `json: "dose_id"`
 	UserId    int64  `json: "user_id"`
 	VacId     int64  `json: "vac_id"`
 	DateTaken string `json: "date_taken"`
@@ -92,9 +92,9 @@ func createTables(db *sql.DB) {
 
 func GetUserById(db *sql.DB, user_id int64) (User, error) {
 	var user User
-	queryString := "select user_id, name, birth, email from users where id = ?;"
+	queryString := "select user_id, name, birth, email from users where user_id = ?;"
 	row := db.QueryRow(queryString, user_id)
-	err := row.Scan(&user.Id, &user.Name, &user.Birth, &user.Email)
+	err := row.Scan(&user.UserId, &user.Name, &user.Birth, &user.Email)
 	return user, err
 }
 
