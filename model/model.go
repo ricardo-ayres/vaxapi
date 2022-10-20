@@ -1,18 +1,20 @@
-package main
+package model
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"os"
+	"pi3/vaxapi/auth"
 )
 
 type User struct {
-	UserId   int64  `json:"user_id"`
+	UserId   int    `json:"user_id"`
 	Username string `json:"username"`
 	Name     string `json:"name"`
 	Birth    string `json:"birth"`
 	Email    string `json:"email"`
-	password string
+	Password string `json:"password,omitempty"`
 }
 
 type Vaccin struct {
@@ -53,20 +55,20 @@ func createTables(db *sql.DB) {
 
 	createUsers := `
 		create table users (
-		user_id integer primary key,
-		username text not null,
+		user_id integer not null primary key,
+		username text not null unique,
 		name text not null,
 		birth text not null,
-		email text unique,
-		pwd_hash hash not null,
-		pwd_salt hash not null unique,
+		email text not null unique,
+		pwd_hash binary not null,
+		pwd_salt binary not null unique,
 		check(length(pwd_hash) == 32),
 		check(length(pwd_salt) == 32)
 		);`
 
 	createVaccines := `
 		create table vaccines (
-		vac_id integer primary key,
+		vac_id integer not null primary key,
 		name text unique not null,
 		num_doses integer not null,
 		check(num_doses > 0)
@@ -74,7 +76,7 @@ func createTables(db *sql.DB) {
 
 	createDoses := `
 		create table doses (
-		dose_id integer primary key,
+		dose_id integer not null primary key,
 		user_id integer,
 		vac_id integer,
 		date_taken text,
@@ -98,9 +100,13 @@ func createTables(db *sql.DB) {
 	}
 }
 
-func GetUser(db *sql.DB, user User) (User, error) {
+func GetUser(db *sql.DB, username string, password string) (User, error) {
 	var userdata User
-	var creds Credentials
+	var blank User
+	var creds auth.Credentials
+
+	hash := make([]byte, auth.Size)
+	salt := make([]byte, auth.Size)
 
 	queryString := "select * from users where username = ?;"
 	row := db.QueryRow(queryString, username)
@@ -110,24 +116,38 @@ func GetUser(db *sql.DB, user User) (User, error) {
 		&userdata.Name,
 		&userdata.Birth,
 		&userdata.Email,
-		&creds.hash,
-		&creds.salt)
+		&hash,
+		&salt)
 
-	if CheckPassword(user.password, creds) {
+	if err != nil {
+		return blank, err
+	}
+
+	n := copy(creds.Hash[:], hash)
+	if n != auth.Size {
+		return blank, errors.New("Hash copying error")
+	}
+
+	n = copy(creds.Salt[:], salt)
+	if n != auth.Size {
+		return blank, errors.New("Salt copying error")
+	}
+
+	if auth.CheckPassword(password, creds) {
 		return userdata, err
 	} else {
-		return user, errors.New("Wrong password.")
+		return blank, errors.New("Wrong password.")
 	}
 }
 
 func CreateNewUser(db *sql.DB, user User) (User, error) {
 	var newuser User
-	var creds Credentials
+	var creds auth.Credentials
 	var err error
 
-	creds, err = NewCredentials(user.password)
+	creds, err = auth.NewCredentials(user.Password)
 	if err != nil {
-		return User, err
+		return user, err
 	}
 
 	statement := `insert into users (
@@ -144,16 +164,17 @@ func CreateNewUser(db *sql.DB, user User) (User, error) {
 		user.Name,
 		user.Birth,
 		user.Email,
-		creds.hash,
-		creds.salt)
+		creds.Hash[:],
+		creds.Salt[:])
 
 	if err != nil {
 		return newuser, err
 	}
-	id, err := result.LastInsertId()
+	_, err = result.LastInsertId()
 	if err != nil {
 		return newuser, err
 	}
-	newuser, err = GetUser(db, user)
+
+	newuser, err = GetUser(db, user.Username, user.Password)
 	return newuser, err
 }

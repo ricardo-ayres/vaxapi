@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"crypto/rand"
@@ -9,8 +9,8 @@ import (
 const Size = sha256.Size
 
 type Credentials struct {
-	hash [Size]byte
-	salt [Size]byte
+	Hash [Size]byte
+	Salt [Size]byte
 }
 
 func genSalt() ([Size]byte, error) {
@@ -37,12 +37,12 @@ func NewCredentials(pwd string) (Credentials, error) {
 	var creds Credentials
 	var err error
 
-	creds.salt, err = genSalt()
-	creds.hash = passwordHash(pwd, creds.salt)
+	creds.Salt, err = genSalt()
+	creds.Hash = passwordHash(pwd, creds.Salt)
 	return creds, err
 }
 
 func CheckPassword(pwd string, creds Credentials) bool {
-	newhash := passwordHash(pwd, creds.salt)
-	return newhash == creds.hash
+	newhash := passwordHash(pwd, creds.Salt)
+	return newhash == creds.Hash
 }

@@ -2,39 +2,75 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	_ "github.com/glebarez/go-sqlite"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
+	"pi3/vaxapi/model"
 	"strings"
 )
 
+// Helper functions
 func internalServerError(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusInternalServerError
 	http.Error(w, s, e)
+	log.Println(s)
 }
 
 func badRequest(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusBadRequest
 	http.Error(w, s, e)
+	log.Println(s)
 }
 
 func notFound(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusInternalServerError
 	http.Error(w, s, e)
+	log.Println(s)
 }
 
 func parsePath(r *http.Request, pattern string) string {
 	_, path, pathfound := strings.Cut(r.URL.Path, pattern)
 	if !pathfound {
-		http.Error(w, "Path not specified!", http.StatusBadRequest)
-		return nil
+		return ""
 	}
+	return path
+}
+
+func credsFromHeader(r *http.Request) (string, string, error) {
+	var err error
+	var user string
+	var password string
+
+	auth, creds64, ok := strings.Cut(r.Header["Authorization"][0], " ")
+	if !ok {
+		err = errors.New("Malformed header")
+		return user, password, err
+	}
+
+	if auth != "Basic" {
+		err = errors.New("Bad authorization mode. Only Basic supported.")
+		return user, password, err
+	}
+
+	tmp := make([]byte, base64.StdEncoding.DecodedLen(len(creds64)))
+	n, err := base64.StdEncoding.Decode(tmp, []byte(creds64))
+	if err != nil {
+		return user, password, err
+	}
+
+	creds := string(tmp[:n])
+	user, password, ok = strings.Cut(creds, ":")
+	if !ok {
+		err = errors.New("Malformed Basic authorization token.")
+	}
+
+	return user, password, err
 }
 
 func sendJson(w http.ResponseWriter, v any) error {
@@ -43,38 +79,100 @@ func sendJson(w http.ResponseWriter, v any) error {
 	return enc.Encode(v)
 }
 
-func parseJson(r *http.Request, v *any) error {
+func parseJson(r *http.Request, v any) error {
 	dec := json.NewDecoder(r.Body)
-	return dec.Decode(&v)
+	return dec.Decode(v)
 }
 
-func Users(db *sql.DB, pattern string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		var user User
+// Generic Handler
+type VaxHandler struct {
+	db             *sql.DB
+	pattern        string
+	methodHandlers map[string]func(VaxCtx)
+}
 
-		path := parsePath(r, pattern)
-		// WIP
+type VaxCtx struct {
+	w http.ResponseWriter
+	r *http.Request
+	h VaxHandler
+}
+
+// Implement the Handler interface with ServeHTTP
+func (h VaxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var ctx = VaxCtx{w: w, r: r, h: h}
+	h.methodHandlers[r.Method](ctx)
+}
+
+// UsersHandler
+
+// queryUser() gets userdata if authenticated
+func queryUser(ctx VaxCtx) {
+	var err error
+	var username string
+	var password string
+	var userdata model.User
+
+	username, password, err = credsFromHeader(ctx.r)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	userdata, err = model.GetUser(ctx.h.db, username, password)
+	if err != nil {
+		internalServerError(ctx.w, err)
+		return
+	}
+
+	sendJson(ctx.w, userdata)
+}
+
+// requestNewUser() handles POST requests for new users
+func requestNewUser(ctx VaxCtx) {
+	var newuser model.User
+	var err error
+
+	path := parsePath(ctx.r, ctx.h.pattern)
+	if path != "new" {
+		err = errors.New("Wrong Endpoint for new user!")
+		badRequest(ctx.w, err)
+		return
+	}
+
+	err = parseJson(ctx.r, &newuser)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	newuser, err = model.CreateNewUser(ctx.h.db, newuser)
+	if err != nil {
+		internalServerError(ctx.w, err)
+		return
+	}
+
+	err = sendJson(ctx.w, newuser)
+	if err != nil {
+		internalServerError(ctx.w, err)
 	}
 }
 
-func main() {
-	// setup database
-	db := SetupDatabase("./sqlite.db")
-	defer db.Close()
+func updateUser(ctx VaxCtx) {
+	return //implement later
+}
 
-	// static pages
-	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/users/", Users(db, "/users/"))
+func deleteUser(ctx VaxCtx) {
+	return //implement later
+}
 
-	// decide what port to use, run on :80 if not set
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "80"
-	}
-	port = ":" + port
-
-	// start the server
-	log.Printf("Running on port %s", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+func NewUsersHandler(db *sql.DB, pattern string) VaxHandler {
+	var h VaxHandler
+	h.db = db
+	h.pattern = pattern
+	h.methodHandlers = make(map[string]func(VaxCtx))
+	h.methodHandlers["GET"] = queryUser
+	h.methodHandlers["POST"] = requestNewUser
+	h.methodHandlers["PUT"] = updateUser
+	h.methodHandlers["DELETE"] = deleteUser
+	return h
 }

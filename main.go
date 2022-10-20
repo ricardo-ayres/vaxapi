@@ -3,16 +3,18 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"pi3/vaxapi/model"
 )
 
 func main() {
 	// setup database
-	db := SetupDatabase("./sqlite.db")
+	db := model.SetupDatabase("./sqlite.db")
 	defer db.Close()
 
 	// static pages
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/users/", Users(db))
+	http.Handle("/users/", NewUsersHandler(db, "/users/"))
 
 	// decide what port to use, run on :80 if not set
 	port := os.Getenv("PORT")
