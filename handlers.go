@@ -11,30 +11,30 @@ import (
 	"strings"
 )
 
-func internalServerError(w http.ResponseWriter, err) {
+func internalServerError(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusInternalServerError
 	http.Error(w, s, e)
 }
 
-func badRequest(w http.ResponseWriter, err) {
+func badRequest(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusBadRequest
 	http.Error(w, s, e)
 }
 
-func notFound(w http.ResponseWriter, err) {
+func notFound(w http.ResponseWriter, err error) {
 	s := err.Error()
 	e := http.StatusInternalServerError
 	http.Error(w, s, e)
 }
 
 func parsePath(r *http.Request, pattern string) string {
-		_, path, pathfound := strings.Cut(r.URL.Path, pattern)
-		if !pathfound {
-			http.Error(w, "Path not specified!", http.StatusBadRequest)
-			return nil
-		}
+	_, path, pathfound := strings.Cut(r.URL.Path, pattern)
+	if !pathfound {
+		http.Error(w, "Path not specified!", http.StatusBadRequest)
+		return nil
+	}
 }
 
 func sendJson(w http.ResponseWriter, v any) error {

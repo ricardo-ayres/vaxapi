@@ -124,7 +124,7 @@ func CreateNewUser(db *sql.DB, user User) (User, error) {
 	var newuser User
 	var creds Credentials
 	var err error
-	
+
 	creds, err = NewCredentials(user.password)
 	if err != nil {
 		return User, err
