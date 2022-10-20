@@ -7,10 +7,12 @@ import (
 )
 
 type User struct {
-	UserId int64  `json:"user_id"`
-	Name   string `json:"name"`
-	Birth  string `json:"birth"`
-	Email  string `json:"email"`
+	UserId   int64  `json:"user_id"`
+	Username string `json:"username"`
+	Name     string `json:"name"`
+	Birth    string `json:"birth"`
+	Email    string `json:"email"`
+	password string
 }
 
 type Vaccin struct {
@@ -52,16 +54,22 @@ func createTables(db *sql.DB) {
 	createUsers := `
 		create table users (
 		user_id integer primary key,
-		name text,
-		birth text,
-		email text unique
+		username text not null,
+		name text not null,
+		birth text not null,
+		email text unique,
+		pwd_hash hash not null,
+		pwd_salt hash not null unique,
+		check(length(pwd_hash) == 32),
+		check(length(pwd_salt) == 32)
 		);`
 
 	createVaccines := `
 		create table vaccines (
 		vac_id integer primary key,
-		name text,
-		num_doses integer
+		name text unique not null,
+		num_doses integer not null,
+		check(num_doses > 0)
 		);`
 
 	createDoses := `
@@ -90,19 +98,55 @@ func createTables(db *sql.DB) {
 	}
 }
 
-func GetUserById(db *sql.DB, user_id int64) (User, error) {
-	var user User
-	queryString := "select user_id, name, birth, email from users where user_id = ?;"
-	row := db.QueryRow(queryString, user_id)
-	err := row.Scan(&user.UserId, &user.Name, &user.Birth, &user.Email)
-	return user, err
+func GetUser(db *sql.DB, user User) (User, error) {
+	var userdata User
+	var creds Credentials
+
+	queryString := "select * from users where username = ?;"
+	row := db.QueryRow(queryString, username)
+	err := row.Scan(
+		&userdata.UserId,
+		&userdata.Username,
+		&userdata.Name,
+		&userdata.Birth,
+		&userdata.Email,
+		&creds.hash,
+		&creds.salt)
+
+	if CheckPassword(user.password, creds) {
+		return userdata, err
+	} else {
+		return user, errors.New("Wrong password.")
+	}
 }
 
 func CreateNewUser(db *sql.DB, user User) (User, error) {
 	var newuser User
+	var creds Credentials
+	var err error
+	
+	creds, err = NewCredentials(user.password)
+	if err != nil {
+		return User, err
+	}
 
-	statement := "insert into users (name, birth, email) values (?, ?, ?);"
-	result, err := db.Exec(statement, user.Name, user.Birth, user.Email)
+	statement := `insert into users (
+		username,
+		name,
+		birth,
+		email,
+		pwd_hash,
+		pwd_salt
+		) values (?, ?, ?, ?, ?, ?);`
+
+	result, err := db.Exec(statement,
+		user.Username,
+		user.Name,
+		user.Birth,
+		user.Email,
+		creds.hash,
+		creds.salt)
+
 	if err != nil {
 		return newuser, err
 	}
@@ -110,6 +154,6 @@ func CreateNewUser(db *sql.DB, user User) (User, error) {
 	if err != nil {
 		return newuser, err
 	}
-	newuser, err = GetUserById(db, id)
+	newuser, err = GetUser(db, user)
 	return newuser, err
 }

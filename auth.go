@@ -2,8 +2,8 @@ package main
 
 import (
 	"crypto/rand"
-	"errors"
 	"crypto/sha256"
+	"errors"
 )
 
 const Size = sha256.Size
@@ -33,7 +33,7 @@ func passwordHash(pwd string, salt [Size]byte) [Size]byte {
 	return sha256.Sum256(salted)
 }
 
-func NewPassword(pwd string) (Credentials, error) {
+func NewCredentials(pwd string) (Credentials, error) {
 	var creds Credentials
 	var err error
 
