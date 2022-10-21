@@ -47,7 +47,13 @@ func credsFromHeader(r *http.Request) (string, string, error) {
 	var user string
 	var password string
 
-	auth, creds64, ok := strings.Cut(r.Header["Authorization"][0], " ")
+	Authorization, ok := r.Header["Authorization"]
+	if !ok {
+		err = errors.New("Unauthorized")
+		return user, password, err
+	}
+
+	auth, creds64, ok := strings.Cut(Authorization[0], " ")
 	if !ok {
 		err = errors.New("Malformed header")
 		return user, password, err
