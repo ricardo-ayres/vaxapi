@@ -178,3 +178,10 @@ func CreateNewUser(db *sql.DB, user User) (User, error) {
 	newuser, err = GetUser(db, user.Username, user.Password)
 	return newuser, err
 }
+
+// GetDoses sql statement:
+/* SELECT users.name, vaccines.name, vaccines.num_doses, doses.date_taken
+	FROM doses JOIN users ON doses.user_id=users.user_id
+	JOIN vaccines ON doses.vac_id=vaccines.vac_id
+	WHERE users.user_id=?
+*/
