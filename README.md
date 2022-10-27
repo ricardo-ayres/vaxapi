@@ -39,10 +39,10 @@ Desta forma obteve-se um banco de dados suficientemente normalizado para
 o que se propõe a fazer neste projeto, e que preserva o requerimento de
 relações do tipo muitos para muitos.
 
-## O Api:
+## O API:
 
 Nosso projeto é uma API REST escrita utilizando os módulos da biblioteca
-padrão linguagem Go e banco de dados SQLite3, utilizando o driver
+padrão da linguagem Go e banco de dados SQLite3, utilizando o driver
 [go-sqlite](https://www.github.com/glebarez/go-sqlite).
 
 A nossa API consiste em implementações simples das operações CRUD no
