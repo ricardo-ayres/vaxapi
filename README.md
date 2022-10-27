@@ -1,18 +1,24 @@
-# VaxApi Projeto Integrador do segundo semestre de 2022, Eixo da Computação,
+# VaxApi
+
+Projeto Integrador do segundo semestre de 2022, Eixo da Computação,
+
 Univesp.  PJI310 - Sala 001 - Grupo 011
 
-## O projeto: O conceito que explorado neste projeto foi o de uma plataforma
-de carteiras de vacinação virtuais, em que o banco de dados armazena os
-dados dos usuários, das vacinas e com quais doses de quais vacinas cada
-usuário foi vacinado.
+## O projeto:
 
-## O Modelo de dados: O modelo de dados para este projeto foi pensado com
-base nas seguintes necessidades: - Cada vacina precisa ter um cadastro
-que determine o nome da vacina, quantas doses são necessárias e qualquer
-outra informação particular daquela vacina; - Cada usuário precisa ter
-um cadastro que mantenha suas informações básicas de identificação; -
-Há necessidade de manter um registro de cada dose de cada vacina que cada
-um dos usuários já tomou e a data em que aquela dose foi aplicada.
+O conceito que explorado neste projeto foi o de uma plataforma de carteiras de
+vacinação virtuais, em que o banco de dados armazena os dados dos usuários,
+das vacinas e com quais doses de quais vacinas cada usuário foi vacinado.
+
+## O Modelo de dados:
+
+O modelo de dados para este projeto foi pensado com base nas seguintes
+necessidades: - Cada vacina precisa ter um cadastro que determine o nome
+da vacina, quantas doses são necessárias e qualquer outra informação
+particular daquela vacina; - Cada usuário precisa ter um cadastro que
+mantenha suas informações básicas de identificação; - Há necessidade
+de manter um registro de cada dose de cada vacina que cada um dos usuários
+já tomou e a data em que aquela dose foi aplicada.
 
 Com base nessas informações estabeleceu-se a necessidade de uma relação
 de muitos para muitos: Cada usuário se relaciona com múltiplas vacinas
@@ -20,18 +26,23 @@ de muitos para muitos: Cada usuário se relaciona com múltiplas vacinas
 montou-se um banco de dados com 3 tabelas:
 
 - Tabela de usuários: Armazena as informações pessoais básicas e de
-identificação e acesso de cada usuário; - Tabela de vacinas: Armazena
-as informações de cada vacina, como nome da vacina, número de doses e
-outras informações relevantes; - Tabela de doses: Armazena por meio de
-chaves estrangeiras (*foreign keys*) as doses de quais vacinas tomadas por
-cada usuário e as datas em que aquelas doses foram aplicadas.
+identificação e acesso de cada usuário;
+
+- Tabela de vacinas: Armazena as informações de cada vacina, como nome
+da vacina, número de doses e outras informações relevantes;
+
+- Tabela de doses: Armazena por meio de chaves estrangeiras (*foreign
+keys*) as doses de quais vacinas tomadas por cada usuário e as datas em
+que aquelas doses foram aplicadas.
 
 Desta forma obteve-se um banco de dados suficientemente normalizado para
 o que se propõe a fazer neste projeto, e que preserva o requerimento de
 relações do tipo muitos para muitos.
 
-## O Api: Nosso projeto é uma API REST escrita utilizando os módulos da
-biblioteca padrão linguagem Go e banco de dados SQLite3, utilizando o driver
+## O Api:
+
+Nosso projeto é uma API REST escrita utilizando os módulos da biblioteca
+padrão linguagem Go e banco de dados SQLite3, utilizando o driver
 [go-sqlite](https://www.github.com/glebarez/go-sqlite).
 
 A nossa API consiste em implementações simples das operações CRUD no
