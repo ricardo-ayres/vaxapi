@@ -1,8 +1,8 @@
 # VaxApi
 
-Projeto Integrador do segundo semestre de 2022, Eixo da Computação,
+Projeto Integrador do segundo semestre de 2022, Eixo da Computação, Univesp.
 
-Univesp.  PJI310 - Sala 001 - Grupo 011
+PJI310 - Sala 001 - Grupo 011
 
 ## O projeto:
 
