@@ -127,6 +127,15 @@ porém com os
 métodos `PUT` ou `DELETE` e especificando-se no corpo da mensagem o
 identificador numérico `[did]` da dose tomada, em formato json:
 
+Exemplo de atualização da data em que a vacina foi tomada, usando `PUT`:
+```
+{
+	"dose_id": [did],
+	"date_taken": "aaaa-mm-dd"
+}
+```
+
+Exemplo de remoção de uma dose usando `DELETE`:
 ```
 {
 	"dose_id": [did]
