@@ -53,8 +53,10 @@ func SetupDatabase(filename string) *sql.DB {
 func createTables(db *sql.DB) {
 	var err error
 
+	pragmaForeignKeys := `pragma foreign_keys = on;`
+
 	createUsers := `
-		create table users (
+		create table if not exists users (
 		user_id integer not null primary key,
 		username text not null unique,
 		name text not null,
@@ -67,7 +69,7 @@ func createTables(db *sql.DB) {
 		);`
 
 	createVaccines := `
-		create table vaccines (
+		create table if not exists vaccines (
 		vac_id integer not null primary key,
 		name text unique not null,
 		num_doses integer not null,
@@ -75,14 +77,19 @@ func createTables(db *sql.DB) {
 		);`
 
 	createDoses := `
-		create table doses (
+		create table if not exists doses (
 		dose_id integer not null primary key,
 		user_id integer,
 		vac_id integer,
 		date_taken text,
-		foreign key(user_id) references users(user_id),
+		foreign key(user_id) references users(user_id) on delete cascade,
 		foreign key(vac_id) references vaccines(vac_id)
 		);`
+
+	_, err = db.Exec(pragmaForeignKeys)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	_, err = db.Exec(createUsers)
 	if err != nil {
@@ -97,46 +104,6 @@ func createTables(db *sql.DB) {
 	_, err = db.Exec(createDoses)
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-func GetUser(db *sql.DB, username string, password string) (User, error) {
-	var userdata User
-	var blank User
-	var creds auth.Credentials
-
-	hash := make([]byte, auth.Size)
-	salt := make([]byte, auth.Size)
-
-	queryString := "select * from users where username = ?;"
-	row := db.QueryRow(queryString, username)
-	err := row.Scan(
-		&userdata.UserId,
-		&userdata.Username,
-		&userdata.Name,
-		&userdata.Birth,
-		&userdata.Email,
-		&hash,
-		&salt)
-
-	if err != nil {
-		return blank, err
-	}
-
-	n := copy(creds.Hash[:], hash)
-	if n != auth.Size {
-		return blank, errors.New("Hash copying error")
-	}
-
-	n = copy(creds.Salt[:], salt)
-	if n != auth.Size {
-		return blank, errors.New("Salt copying error")
-	}
-
-	if auth.CheckPassword(password, creds) {
-		return userdata, err
-	} else {
-		return blank, errors.New("Wrong password.")
 	}
 }
 
@@ -179,7 +146,65 @@ func CreateNewUser(db *sql.DB, user User) (User, error) {
 	return newuser, err
 }
 
-// GetDoses sql statement:
+func GetUser(db *sql.DB, username string, password string) (User, error) {
+	var userdata User
+	var blank User
+	var creds auth.Credentials
+
+	hash := make([]byte, auth.Size)
+	salt := make([]byte, auth.Size)
+
+	queryString := `select * from users where username = ?;`
+	row := db.QueryRow(queryString, username)
+	err := row.Scan(
+		&userdata.UserId,
+		&userdata.Username,
+		&userdata.Name,
+		&userdata.Birth,
+		&userdata.Email,
+		&hash,
+		&salt)
+
+	if err != nil {
+		return blank, err
+	}
+
+	n := copy(creds.Hash[:], hash)
+	if n != auth.Size {
+		return blank, errors.New("Hash copying error")
+	}
+
+	n = copy(creds.Salt[:], salt)
+	if n != auth.Size {
+		return blank, errors.New("Salt copying error")
+	}
+
+	if auth.CheckPassword(password, creds) {
+		return userdata, err
+	} else {
+		return blank, errors.New("Wrong password.")
+	}
+}
+
+func DelUser(db *sql.DB, username string, password string) error {
+	var err error
+	var userdata User
+	sqlCmd := `delete from users where user_id = ?;`
+
+	userdata, err = GetUser(db, username, password);
+	if err != nil {
+		return err;
+	}
+
+	_, err = db.Exec(sqlCmd, userdata.UserId)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+/* GetDoses sql statement: */
 /* SELECT users.name, vaccines.name, vaccines.num_doses, doses.date_taken
 	FROM doses JOIN users ON doses.user_id=users.user_id
 	JOIN vaccines ON doses.vac_id=vaccines.vac_id

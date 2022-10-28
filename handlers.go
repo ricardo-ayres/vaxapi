@@ -161,7 +161,21 @@ func updateUser(ctx VaxCtx) {
 }
 
 func deleteUser(ctx VaxCtx) {
-	return //implement later
+	var err error
+	var username string
+	var password string
+
+	username, password, err = credsFromHeader(ctx.r)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	err = model.DelUser(ctx.h.db, username, password)
+	if err != nil {
+		internalServerError(ctx.w, err)
+	}
+	return
 }
 
 func NewUsersHandler(db *sql.DB, pattern string) VaxHandler {
