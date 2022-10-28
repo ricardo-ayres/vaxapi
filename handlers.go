@@ -138,13 +138,6 @@ func requestNewUser(ctx VaxCtx) {
 	var newuser model.User
 	var err error
 
-	path := parsePath(ctx.r, ctx.h.pattern)
-	if path != "new" {
-		err = errors.New("Wrong Endpoint for new user!")
-		badRequest(ctx.w, err)
-		return
-	}
-
 	err = parseJson(ctx.r, &newuser)
 	if err != nil {
 		badRequest(ctx.w, err)
