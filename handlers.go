@@ -111,7 +111,7 @@ func (h VaxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // UsersHandler
 
-// queryUser() gets userdata if authenticated
+// queryUser() handles GET requests for retrieving user data if authenticated
 func queryUser(ctx VaxCtx) {
 	var err error
 	var username string
@@ -156,10 +156,39 @@ func requestNewUser(ctx VaxCtx) {
 	}
 }
 
+// updateUser() handles PUT requests for updating existing users
 func updateUser(ctx VaxCtx) {
-	return //implement later
+	var err error
+	var username string
+	var password string
+	var newdata model.User
+
+	username, password, err = credsFromHeader(ctx.r)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	err = parseJson(ctx.r, &newdata)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	newdata, err = model.UpdateUser(ctx.h.db, newdata, username, password)
+	if err != nil {
+		internalServerError(ctx.w, err)
+		return
+	}
+
+	err = sendJson(ctx.w, newdata)
+	if err != nil {
+		internalServerError(ctx.w, err)
+	}
+	return
 }
 
+// deleteUser() handles DELETE requests for removing users
 func deleteUser(ctx VaxCtx) {
 	var err error
 	var username string

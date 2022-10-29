@@ -9,11 +9,11 @@ import (
 )
 
 type User struct {
-	UserId   int    `json:"user_id"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Birth    string `json:"birth"`
-	Email    string `json:"email"`
+	UserId   int    `json:"user_id,omitempty"`
+	Username string `json:"username,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Birth    string `json:"birth,omitempty"`
+	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
 }
 
@@ -31,11 +31,8 @@ type Dose struct {
 }
 
 func SetupDatabase(filename string) *sql.DB {
-	dbMissing := false
-
 	if _, err := os.Stat(filename); err != nil {
 		log.Println("Database does not exist. Will create")
-		dbMissing = true
 	}
 
 	db, err := sql.Open("sqlite", filename)
@@ -43,9 +40,7 @@ func SetupDatabase(filename string) *sql.DB {
 		log.Fatal(err)
 	}
 
-	if dbMissing {
-		createTables(db)
-	}
+	createTables(db)
 
 	return db
 }
@@ -186,17 +181,92 @@ func GetUser(db *sql.DB, username string, password string) (User, error) {
 	}
 }
 
+func UpdateUser(db *sql.DB, newdata User, username string, password string) (User, error) {
+	var err, newerr error
+	var olddata User
+	var blank User
+	var creds auth.Credentials
+
+	updateCreds := `;` // do nothing by default
+	updateData := `update users set
+		name = ?,
+		birth = ?,
+		email = ?
+		where user_id = ?;`
+
+	olddata, err = GetUser(db, username, password)
+	if err != nil {
+		return blank, err
+	}
+
+	/* Copy old data over blank/missing fields */
+	if newdata.Name == "" { newdata.Name = olddata.Name; }
+	if newdata.Birth == "" { newdata.Birth = olddata.Birth; }
+	if newdata.Email == "" { newdata.Email = olddata.Email; }
+
+	/* If password updated: we need to generate a new hash and a new salt */
+	if newdata.Password != "" {
+		creds, err = auth.NewCredentials(newdata.Password)
+		if err != nil {
+			return olddata, err
+		}
+
+		updateCreds = `update users set
+			pwd_hash = ?,
+			pwd_salt = ?
+			where user_id = ?;`
+
+	newdata.Password = "UPDATED"
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return blank, err
+	}
+
+	/* update credentials */
+	_, err = tx.Exec(updateCreds,
+		creds.Hash[:],
+		creds.Salt[:],
+		olddata.UserId)
+	if err != nil {
+		newerr = tx.Rollback()
+		if newerr != nil {
+			err = newerr
+		}
+		return blank, err
+	}
+
+	/* update data */
+	_, err = tx.Exec(updateData,
+		newdata.Name,
+		newdata.Birth,
+		newdata.Email,
+		olddata.UserId)
+
+	if err != nil {
+		newerr = tx.Rollback()
+		if newerr != nil {
+			err = newerr
+		}
+		return blank, err
+	}
+
+	tx.Commit()
+	return newdata, err
+}
+
 func DelUser(db *sql.DB, username string, password string) error {
 	var err error
 	var userdata User
-	sqlCmd := `delete from users where user_id = ?;`
+	statement := `delete from users where user_id = ?;`
 
 	userdata, err = GetUser(db, username, password);
 	if err != nil {
 		return err;
 	}
 
-	_, err = db.Exec(sqlCmd, userdata.UserId)
+	_, err = db.Exec(statement, userdata.UserId)
 	if err != nil {
 		return err
 	}
