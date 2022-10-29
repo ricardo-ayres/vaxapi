@@ -21,6 +21,7 @@ type Vaccin struct {
 	VacId    int64  `json: "vac_id"`
 	Name     string `json: "name"`
 	NumDoses string `json: "num_doses"`
+	Obs      string `json: "obs"`
 }
 
 type Dose struct {
@@ -68,6 +69,7 @@ func createTables(db *sql.DB) {
 		vac_id integer not null primary key,
 		name text unique not null,
 		num_doses integer not null,
+		obs text,
 		check(num_doses > 0)
 		);`
 
@@ -102,6 +104,9 @@ func createTables(db *sql.DB) {
 	}
 }
 
+/*
+ * FUNCTIONS FOR TABLE users
+ */
 func CreateNewUser(db *sql.DB, user User) (User, error) {
 	var newuser User
 	var creds auth.Credentials
@@ -200,9 +205,15 @@ func UpdateUser(db *sql.DB, newdata User, username string, password string) (Use
 	}
 
 	/* Copy old data over blank/missing fields */
-	if newdata.Name == "" { newdata.Name = olddata.Name; }
-	if newdata.Birth == "" { newdata.Birth = olddata.Birth; }
-	if newdata.Email == "" { newdata.Email = olddata.Email; }
+	if newdata.Name == "" {
+		newdata.Name = olddata.Name
+	}
+	if newdata.Birth == "" {
+		newdata.Birth = olddata.Birth
+	}
+	if newdata.Email == "" {
+		newdata.Email = olddata.Email
+	}
 
 	/* If password updated: we need to generate a new hash and a new salt */
 	if newdata.Password != "" {
@@ -216,7 +227,7 @@ func UpdateUser(db *sql.DB, newdata User, username string, password string) (Use
 			pwd_salt = ?
 			where user_id = ?;`
 
-	newdata.Password = "UPDATED"
+		newdata.Password = "UPDATED"
 	}
 
 	tx, err := db.Begin()
@@ -261,9 +272,9 @@ func DelUser(db *sql.DB, username string, password string) error {
 	var userdata User
 	statement := `delete from users where user_id = ?;`
 
-	userdata, err = GetUser(db, username, password);
+	userdata, err = GetUser(db, username, password)
 	if err != nil {
-		return err;
+		return err
 	}
 
 	_, err = db.Exec(statement, userdata.UserId)
@@ -274,9 +285,41 @@ func DelUser(db *sql.DB, username string, password string) error {
 	return err
 }
 
+/*
+ * FUNCTIONS FOR TABLE vaccines
+ */
+func GetVac(db *sql.DB) ([]Vaccin, error) {
+	var err error
+	var vac Vaccin
+
+	/*
+	 * O SUS oferece 20 tipos diferentes de vacinas
+	 * durante a vida, alocando um slice com cap de 32
+	 * para evitar realocações nos appends
+	 */
+	vax := make([]Vaccin, 0, 32)
+	statement := `select * from vaccines`
+
+	rows, err := db.Query(statement)
+	if err != nil {
+		return vax, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&vac.VacId, &vac.Name, &vac.NumDoses)
+		if err != nil {
+			return vax, err
+		}
+		vax = append(vax, vac)
+	}
+
+	return vax, err
+}
+
 /* GetDoses sql statement: */
 /* SELECT users.name, vaccines.name, vaccines.num_doses, doses.date_taken
-	FROM doses JOIN users ON doses.user_id=users.user_id
-	JOIN vaccines ON doses.vac_id=vaccines.vac_id
-	WHERE users.user_id=?
+FROM doses JOIN users ON doses.user_id=users.user_id
+JOIN vaccines ON doses.vac_id=vaccines.vac_id
+WHERE users.user_id=?
 */

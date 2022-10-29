@@ -218,3 +218,15 @@ func NewUsersHandler(db *sql.DB, pattern string) VaxHandler {
 	h.methodHandlers["DELETE"] = deleteUser
 	return h
 }
+
+/* a simple closure to allow access to the db variable */
+func VacHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vax, err := model.GetVac(db)
+		if err != nil {
+			internalServerError(w, err)
+		}
+		sendJson(w, vax)
+		return
+	}
+}
