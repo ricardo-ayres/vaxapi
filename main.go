@@ -15,6 +15,7 @@ func main() {
 	// static pages
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.Handle("/users/", NewUsersHandler(db, "/users/"))
+	http.Handle("/users/doses/", NewDosesHandler(db, "/users/doses/"))
 	http.HandleFunc("/vacs/", VacHandler(db))
 
 	// decide what port to use, run on :80 if not set

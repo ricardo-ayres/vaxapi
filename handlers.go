@@ -219,7 +219,10 @@ func NewUsersHandler(db *sql.DB, pattern string) VaxHandler {
 	return h
 }
 
-/* a simple closure to allow access to the db variable */
+/* Handler for getting the available vaccines.
+ * Implemented as a simple closure to allow access to the db variable,
+ * avoiding having to implement the full interface.
+ */
 func VacHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vax, err := model.GetVac(db)
@@ -229,4 +232,59 @@ func VacHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 		sendJson(w, vax)
 		return
 	}
+}
+
+/* Doses handler
+ * Implemented as the full interface but using only two methods for now.
+ */
+func queryDoses(ctx VaxHandler) {
+	var err error
+	var username string
+	var password string
+	var doses []model.Dose
+
+	username, password, err = credsFromHeader(ctx.r)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	doses, err = model.GetUserDoses(ctx.h.db, username, password)
+	if err != nil {
+		internalServerError(ctx.w, err)
+		return
+	}
+
+	err = sendJson(ctx.w, doses)
+	if err != nil {
+		internalServerError(ctx.w, err)
+	}
+	
+	return
+}
+
+func requestNewDose(ctx VaxHandler) {
+	return
+}
+
+func updateDose(ctx VaxHandler) {
+	//not implemented yet.
+	return
+}
+
+func deleteDose(ctx VaxHandler) {
+	//not implemented yet.
+	return
+}
+
+func NewDosesHandler(db *sql.DB, pattern string) VaxHandler {
+	var h VaxHandler
+	h.db = db
+	h.pattern = pattern
+	h.methodHandlers = make(map[string]func(VaxCtx))
+	h.methodHandlers["GET"] = queryDoses
+	h.methodHandlers["POST"] = requestNewDose
+	h.methodHandlers["PUT"] = updateDose
+	h.methodHandlers["DELETE"] = deleteDose
+	return h
 }

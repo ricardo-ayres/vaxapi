@@ -70,7 +70,7 @@ func createTables(db *sql.DB) {
 		name text unique not null,
 		num_doses integer not null,
 		obs text,
-		check(num_doses > 0)
+		check(num_doses >= 0)
 		);`
 
 	createDoses := `
@@ -323,3 +323,7 @@ FROM doses JOIN users ON doses.user_id=users.user_id
 JOIN vaccines ON doses.vac_id=vaccines.vac_id
 WHERE users.user_id=?
 */
+func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) {
+	return
+}
+
