@@ -237,7 +237,8 @@ func VacHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 /* Doses handler
  * Implemented as the full interface but using only two methods for now.
  */
-func queryDoses(ctx VaxHandler) {
+/*
+func queryDoses(ctx VaxCtx) {
 	var err error
 	var username string
 	var password string
@@ -288,3 +289,4 @@ func NewDosesHandler(db *sql.DB, pattern string) VaxHandler {
 	h.methodHandlers["DELETE"] = deleteDose
 	return h
 }
+*/

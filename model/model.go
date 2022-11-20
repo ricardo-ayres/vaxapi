@@ -6,6 +6,9 @@ import (
 	"log"
 	"os"
 	"pi3/vaxapi/auth"
+	"bytes"
+	"strconv"
+	"encoding/csv"
 )
 
 type User struct {
@@ -32,8 +35,10 @@ type Dose struct {
 }
 
 func SetupDatabase(filename string) *sql.DB {
+	missing := false
 	if _, err := os.Stat(filename); err != nil {
 		log.Println("Database does not exist. Will create")
+		missing = true
 	}
 
 	db, err := sql.Open("sqlite", filename)
@@ -41,7 +46,9 @@ func SetupDatabase(filename string) *sql.DB {
 		log.Fatal(err)
 	}
 
-	createTables(db)
+	if missing {
+		createTables(db)
+	}
 
 	return db
 }
@@ -70,7 +77,7 @@ func createTables(db *sql.DB) {
 		name text unique not null,
 		num_doses integer not null,
 		obs text,
-		check(num_doses >= 0)
+		check(num_doses > 0)
 		);`
 
 	createDoses := `
@@ -82,6 +89,12 @@ func createTables(db *sql.DB) {
 		foreign key(user_id) references users(user_id) on delete cascade,
 		foreign key(vac_id) references vaccines(vac_id)
 		);`
+
+	insertVaccines := `insert into vaccines (
+		name,
+		num_doses,
+		obs
+		) values (?,?,?);`
 
 	_, err = db.Exec(pragmaForeignKeys)
 	if err != nil {
@@ -102,6 +115,37 @@ func createTables(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	csvBytes, err := os.ReadFile("vacinas.csv")
+	if err != nil {
+		log.Println(err)
+	}
+
+	csvReader := csv.NewReader(bytes.NewReader(csvBytes))
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		log.Println(err)
+	}
+
+	insertStatement, err := db.Prepare(insertVaccines)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for _, record := range records {
+		vname := record[0]
+		ndoses, _ := strconv.Atoi(record[1])
+		vobs := record[2]
+		_, err = insertStatement.Exec(
+			&vname,
+			&ndoses,
+			&vobs)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	insertStatement.Close()
 }
 
 /*
@@ -307,7 +351,7 @@ func GetVac(db *sql.DB) ([]Vaccin, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&vac.VacId, &vac.Name, &vac.NumDoses)
+		err = rows.Scan(&vac.VacId, &vac.Name, &vac.NumDoses, &vac.Obs)
 		if err != nil {
 			return vax, err
 		}
@@ -323,7 +367,9 @@ FROM doses JOIN users ON doses.user_id=users.user_id
 JOIN vaccines ON doses.vac_id=vaccines.vac_id
 WHERE users.user_id=?
 */
+/*
 func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) {
 	return
 }
+*/
 

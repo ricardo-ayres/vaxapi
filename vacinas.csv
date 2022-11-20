@@ -1,4 +1,3 @@
-name,num_doses,obs
 BCG,1,
 Hepatite B,3,
 Penta,3,
@@ -17,6 +16,6 @@ Difteria e tétano adulto (dT),3,
 Meningocócica ACWY,1,
 HPV quadrivalente,2,
 dTpa,1,
-Influenza (esta ofertada durante Campanha anual) e,0,Anual
+Influenza (esta ofertada durante Campanha anual) e,1,Anual
 Pneumocócica 23-valente (Pneumo 23),1,
 COVID-19,4,
