@@ -21,17 +21,17 @@ type User struct {
 }
 
 type Vaccin struct {
-	VacId    int64  `json: "vac_id"`
-	Name     string `json: "name"`
-	NumDoses string `json: "num_doses"`
-	Obs      string `json: "obs"`
+	VacId    int64  `json:"vac_id"`
+	Name     string `json:"name"`
+	NumDoses string `json:"num_doses"`
+	Obs      string `json:"obs"`
 }
 
 type Dose struct {
-	DoseId    int64  `json: "dose_id"`
-	UserId    int64  `json: "user_id"`
-	VacId     int64  `json: "vac_id"`
-	DateTaken string `json: "date_taken"`
+	DoseId    int64  `json:"dose_id"`
+	UserId    int64  `json:"user_id"`
+	VacId     int64  `json:"vac_id"`
+	DateTaken string `json:"date_taken"`
 }
 
 func SetupDatabase(filename string) *sql.DB {
@@ -83,9 +83,9 @@ func createTables(db *sql.DB) {
 	createDoses := `
 		create table if not exists doses (
 		dose_id integer not null primary key,
-		user_id integer,
-		vac_id integer,
-		date_taken text,
+		user_id integer not null,
+		vac_id integer not null,
+		date_taken text not null,
 		foreign key(user_id) references users(user_id) on delete cascade,
 		foreign key(vac_id) references vaccines(vac_id)
 		);`
@@ -361,13 +361,9 @@ func GetVac(db *sql.DB) ([]Vaccin, error) {
 	return vax, err
 }
 
-/* GetDoses sql statement: */
-/* SELECT users.name, vaccines.name, vaccines.num_doses, doses.date_taken
-FROM doses JOIN users ON doses.user_id=users.user_id
-JOIN vaccines ON doses.vac_id=vaccines.vac_id
-WHERE users.user_id=?
-*/
-
+/*
+ * FUNCTIONS FOR TABLE doses
+ */
 func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) {
 	var err error
 	var user User
@@ -377,9 +373,9 @@ func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) 
 	doses := make([]Dose, 0, 32)
 
 	statement := `SELECT
-		users.name,
-		vaccines.name,
-		vaccines.num_doses,
+		doses.dose_id,
+		doses.user_id,
+		doses.vac_id,
 		doses.date_taken
 		FROM doses
 		JOIN users ON doses.user_id=users.user_id
@@ -407,4 +403,49 @@ func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) 
 
 	return doses, err
 }
+
+func RegisterNewDose(db *sql.DB, username string, password string, newdose Dose) (Dose, error) {
+	var err error
+	var user User
+	var dose Dose
+
+	statement := `insert into doses (
+		user_id,
+		vac_id,
+		date_taken
+		) values (?,?,?);`
+
+	user, err = GetUser(db, username, password)
+	if err != nil {
+		return dose, err
+	}
+
+	result, err := db.Exec(statement,
+		user.UserId,
+		newdose.VacId,
+		newdose.DateTaken)
+	if err != nil {
+		return dose, err
+	}
+
+	doseId, err := result.LastInsertId()
+	if err != nil {
+		return dose, err
+	}
+
+	queryString := `select * from doses where doses.dose_id = ?`
+	row := db.QueryRow(queryString, doseId)
+
+	err = row.Scan(
+		&dose.DoseId,
+		&dose.UserId,
+		&dose.VacId,
+		&dose.DateTaken)
+	if err != nil {
+		return dose, err
+	}
+
+	return dose, err
+}
+
 

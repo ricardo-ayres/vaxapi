@@ -264,6 +264,34 @@ func queryDoses(ctx VaxCtx) {
 }
 
 func requestNewDose(ctx VaxCtx) {
+	var err error
+	var username string
+	var password string
+	var newdose model.Dose
+
+	username, password, err = credsFromHeader(ctx.r)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	err = parseJson(ctx.r, &newdose)
+	if err != nil {
+		badRequest(ctx.w, err)
+		return
+	}
+
+	newdose, err = model.RegisterNewDose(ctx.h.db, username, password, newdose)
+	if err != nil {
+		internalServerError(ctx.w, err)
+		return
+	}
+
+	err = sendJson(ctx.w, newdose)
+	if err != nil {
+		internalServerError(ctx.w, err)
+	}
+
 	return
 }
 
