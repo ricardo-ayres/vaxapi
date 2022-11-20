@@ -367,9 +367,44 @@ FROM doses JOIN users ON doses.user_id=users.user_id
 JOIN vaccines ON doses.vac_id=vaccines.vac_id
 WHERE users.user_id=?
 */
-/*
+
 func GetUserDoses(db *sql.DB, username string, password string) ([]Dose, error) {
-	return
+	var err error
+	var user User
+	var dose Dose
+
+	/* alocando cap de 32 para diminuir o numero de realocacoes */
+	doses := make([]Dose, 0, 32)
+
+	statement := `SELECT
+		users.name,
+		vaccines.name,
+		vaccines.num_doses,
+		doses.date_taken
+		FROM doses
+		JOIN users ON doses.user_id=users.user_id
+		JOIN vaccines ON doses.vac_id=vaccines.vac_id
+		WHERE users.user_id=?`
+
+	user, err = GetUser(db, username, password)
+	if err != nil {
+		return doses, err
+	}
+
+	rows, err := db.Query(statement, user.UserId)
+	if err != nil {
+		return doses, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&dose.DoseId, &dose.UserId, &dose.VacId, &dose.DateTaken)
+		if err != nil {
+			return doses, err
+		}
+		doses = append(doses, dose)
+	}
+
+	return doses, err
 }
-*/
 
