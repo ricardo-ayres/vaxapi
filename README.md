@@ -104,7 +104,7 @@ Para consulta de todas as doses de todas as vacinas que o usuário já tomou,
 acessa-se com `GET` o recurso `/users/doses/`.
 
 Para consulta de todas as doses de uma vacina em específico que um dado
-usuário já tomou, acessa-se com `GET` o recurso `/users/doses/[vid]`
+usuário já tomou, acessa-se com `GET` o recurso `/users/doses/?vac=[vid]`
 em que `[vid]` é o identificador numérico da vacina que se deseja consultar.
 
 Para registro de uma nova dose, acessa-se `/users/doses/` com o método
