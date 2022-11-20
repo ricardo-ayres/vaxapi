@@ -103,7 +103,7 @@ caso de sucesso e o corpo da mensagem será vazio.
 Para consulta de todas as doses de todas as vacinas que o usuário já tomou,
 acessa-se com `GET` o recurso `/users/doses/`.
 
-Para consulta de todas as doses de uma vacina em específico que um dado
+**TODO:** Para consulta de todas as doses de uma vacina em específico que um dado
 usuário já tomou, acessa-se com `GET` o recurso `/users/doses/?vac=[vid]`
 em que `[vid]` é o identificador numérico da vacina que se deseja consultar.
 
@@ -122,7 +122,7 @@ Em que `[vid]` é o identificador numérico da vacina. Em caso de sucesso o
 sistema retornará 200 "OK" com uma cópia das informações da dose recém
 registrada em formato json.
 
-Para alteração ou remoção de uma dose utiliza-se o mesmo protocolo,
+**TODO:** Para alteração ou remoção de uma dose utiliza-se o mesmo protocolo,
 porém com os
 métodos `PUT` ou `DELETE` e especificando-se no corpo da mensagem o
 identificador numérico `[did]` da dose tomada, em formato json:
